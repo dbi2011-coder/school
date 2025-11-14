@@ -1,4 +1,4 @@
-// supabase.js - محدث برفع الملفات
+// supabase.js - المشروع الجديد
 const SUPABASE_URL = 'https://bcjhxjelaqirormcflms.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjamh4amVsYXFpcm9ybWNmbG1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MzkzNTMsImV4cCI6MjA3ODUxNTM1M30.aDJ-dR70zJEQJYoUc2boZOtoJevEtPRj_UFAMlEwZpc';
 
@@ -53,6 +53,29 @@ const Database = {
             .from('files')
             .insert([file]);
         return { data, error };
+    },
+
+    async uploadFile(fileId, fileData, fileName, fileType) {
+        // رفع الملف إلى storage
+        const { data, error } = await supabase.storage
+            .from('school-files')
+            .upload(`files/${fileId}/${fileName}`, fileData);
+        
+        if (error) return { data: null, error };
+        
+        // الحصول على رابط التحميل
+        const { data: urlData } = await supabase.storage
+            .from('school-files')
+            .getPublicUrl(`files/${fileId}/${fileName}`);
+            
+        return { data: urlData, error: null };
+    },
+
+    async getFileUrl(fileId, fileName) {
+        const { data } = await supabase.storage
+            .from('school-files')
+            .getPublicUrl(`files/${fileId}/${fileName}`);
+        return data?.publicUrl || null;
     },
 
     async deleteFile(id) {
@@ -168,93 +191,6 @@ const Database = {
             };
         });
         return status;
-    },
-
-    // دالة جديدة لرفع الملفات إلى التخزين (محدثة)
-    async uploadFile(file, fileName) {
-        try {
-            // إنشاء اسم فريد للملف
-            const uniqueFileName = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-            
-            console.log('بدء رفع الملف:', uniqueFileName);
-            
-            // رفع الملف إلى التخزين
-            const { data, error } = await supabase.storage
-                .from('school-files')
-                .upload(`files/${uniqueFileName}`, file, {
-                    cacheControl: '3600',
-                    upsert: false
-                });
-            
-            if (error) {
-                console.error('تفاصيل الخطأ في الرفع:', error);
-                throw error;
-            }
-            
-            // الحصول على رابط عام للملف
-            const { data: urlData } = supabase.storage
-                .from('school-files')
-                .getPublicUrl(`files/${uniqueFileName}`);
-            
-            console.log('تم رفع الملف بنجاح:', urlData.publicUrl);
-            
-            return { 
-                success: true, 
-                filePath: `files/${uniqueFileName}`,
-                publicUrl: urlData.publicUrl,
-                fileName: uniqueFileName
-            };
-        } catch (error) {
-            console.error('خطأ في رفع الملف:', error);
-            return { 
-                success: false, 
-                error: error.message 
-            };
-        }
-    },
-
-    // دالة جديدة لجلب رابط الملف (محدثة)
-    async getFileUrl(fileName) {
-        try {
-            const { data } = supabase.storage
-                .from('school-files')
-                .getPublicUrl(`files/${fileName}`);
-            
-            return data.publicUrl;
-        } catch (error) {
-            console.error('خطأ في جلب رابط الملف:', error);
-            return null;
-        }
-    },
-
-    // دالة جديدة لحذف الملف من التخزين
-    async deleteFileFromStorage(fileName) {
-        try {
-            const { data, error } = await supabase.storage
-                .from('school-files')
-                .remove([`files/${fileName}`]);
-            
-            return { success: !error, error };
-        } catch (error) {
-            console.error('خطأ في حذف الملف:', error);
-            return { success: false, error };
-        }
-    },
-
-    // دالة جديدة لاختبار اتصال التخزين
-    async testStorageConnection() {
-        try {
-            const { data, error } = await supabase.storage
-                .from('school-files')
-                .list('files', {
-                    limit: 1
-                });
-            
-            return { success: !error, error };
-        } catch (error) {
-            console.error('خطأ في اختبار اتصال التخزين:', error);
-            return { success: false, error };
-        }
     }
 };
 
