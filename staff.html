@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
     <style>
+        /* جميع التنسيقات السابقة تبقى كما هي */
         :root {
             --primary: #2c5aa0;
             --primary-dark: #1e3d72;
@@ -529,84 +530,6 @@
             display: inline-block;
         }
 
-        /* نافذة معاينة الملف */
-        .file-preview-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .file-preview-modal.active {
-            display: flex;
-        }
-
-        .file-preview-content {
-            background: white;
-            border-radius: var(--border-radius);
-            width: 90%;
-            max-width: 900px;
-            max-height: 90vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .file-preview-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            border-bottom: 1px solid var(--gray-light);
-            background: var(--light);
-        }
-
-        .file-preview-body {
-            flex: 1;
-            padding: 20px;
-            overflow: auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .file-preview-footer {
-            padding: 15px 20px;
-            border-top: 1px solid var(--gray-light);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .preview-iframe {
-            width: 100%;
-            height: 600px;
-            border: none;
-            border-radius: 4px;
-        }
-
-        .file-info {
-            font-size: 14px;
-            color: var(--gray);
-        }
-
-        .no-preview {
-            text-align: center;
-            color: var(--gray);
-            padding: 40px;
-        }
-
-        .no-preview i {
-            font-size: 48px;
-            margin-bottom: 15px;
-            color: var(--gray-light);
-        }
-
         /* التجاوب */
         @media (max-width: 1024px) {
             .sidebar {
@@ -700,15 +623,6 @@
             .work-schedule-table td {
                 padding: 8px 4px;
             }
-
-            .file-preview-content {
-                width: 95%;
-                height: 95vh;
-            }
-            
-            .preview-iframe {
-                height: 400px;
-            }
         }
     </style>
 </head>
@@ -720,37 +634,10 @@
                 <h3>الملفات الجديدة المرسلة لك</h3>
             </div>
             <div class="modal-body">
-                <p>يوجد لديك ملفات جديدة تحتاج إلى الاطلاع عليها. يرجى الاطلاع على الملفات التالية:</p>
+                <p>يوجد لديك ملفات جديدة تحتاج إلى الاطلاع عليها. يرجى الاطلاع على جميع الملفات:</p>
                 <div id="newFilesList" style="margin-top: 15px; max-height: 300px; overflow-y: auto;"></div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" onclick="acknowledgeNewFiles()">
-                    <i class="fas fa-check"></i>
-                    تم الاطلاع على جميع الملفات
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- نافذة معاينة الملف -->
-    <div id="filePreviewModal" class="file-preview-modal">
-        <div class="file-preview-content">
-            <div class="file-preview-header">
-                <h3 id="previewFileName">معاينة الملف</h3>
-                <button class="close-modal" onclick="closeFilePreview()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="file-preview-body" id="filePreviewBody">
-                <!-- سيتم ملؤها بالجافاسكريبت -->
-            </div>
-            <div class="file-preview-footer">
-                <div class="file-info" id="filePreviewInfo"></div>
-                <div class="action-buttons">
-                    <button class="btn btn-primary" onclick="downloadPreviewedFile()">
-                        <i class="fas fa-download"></i>
-                        تحميل الملف
-                    </button>
+                <div id="remainingFiles" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px; text-align: center; font-weight: bold;">
+                    الملفات المتبقية للمعاينة: <span id="remainingCount">0</span>
                 </div>
             </div>
         </div>
@@ -885,173 +772,6 @@
         let newFiles = [];
         let viewedFiles = JSON.parse(localStorage.getItem("viewedFiles")) || [];
         let fileReadStatus = {};
-        let currentPreviewFile = null;
-
-        // ========== دوال المعاينة والتحميل ==========
-
-        // دالة معاينة الملف
-        async function viewFile(fileId) {
-            try {
-                const currentStaff = JSON.parse(localStorage.getItem("currentStaff"));
-                const currentTime = new Date().toISOString();
-                
-                // إضافة الملف إلى قائمة الملفات التي تم الاطلاع عليها
-                if (!viewedFiles.includes(fileId)) {
-                    viewedFiles.push(fileId);
-                    localStorage.setItem("viewedFiles", JSON.stringify(viewedFiles));
-                }
-                
-                // تسجيل حالة الاطلاع في قاعدة البيانات
-                await Database.updateFileReadStatus(fileId, currentStaff.id, {
-                    read: true,
-                    read_date: currentTime,
-                    staff_name: currentStaff.name
-                });
-                
-                // تحديث الشريط الجانبي
-                await loadCategoriesNav();
-                
-                // عرض الملف
-                await previewFile(fileId);
-                
-            } catch (error) {
-                console.error("خطأ في مشاهدة الملف:", error);
-                alert("حدث خطأ في معاينة الملف");
-            }
-        }
-
-        // دالة معاينة الملف
-        async function previewFile(fileId) {
-            try {
-                const files = await Database.getFiles();
-                const file = files.find(f => f.id === fileId);
-                
-                if (!file) {
-                    alert('الملف غير موجود');
-                    return;
-                }
-
-                currentPreviewFile = file;
-                
-                // تحديث معلومات الملف في النافذة
-                document.getElementById('previewFileName').textContent = file.title;
-                document.getElementById('filePreviewInfo').innerHTML = `
-                    <strong>${file.title}</strong> - ${file.category} - ${file.date}
-                `;
-                
-                const previewBody = document.getElementById('filePreviewBody');
-                
-                if (file.file_name) {
-                    // إذا كان الملف موجودًا، نقوم بعرضه
-                    const fileExtension = file.file_name.split('.').pop().toLowerCase();
-                    const fileUrl = await getFileUrl(file.file_name);
-                    
-                    if (fileExtension === 'pdf') {
-                        previewBody.innerHTML = `<iframe class="preview-iframe" src="${fileUrl}" type="application/pdf"></iframe>`;
-                    } else if (['jpg', 'jpeg', 'png', 'gif', 'bmp'].includes(fileExtension)) {
-                        previewBody.innerHTML = `<img src="${fileUrl}" style="max-width: 100%; max-height: 100%;" alt="${file.title}">`;
-                    } else if (['txt', 'doc', 'docx'].includes(fileExtension)) {
-                        // للملفات النصية ومستندات الوورد، نستخدم iframe
-                        previewBody.innerHTML = `<iframe class="preview-iframe" src="${fileUrl}"></iframe>`;
-                    } else {
-                        previewBody.innerHTML = `
-                            <div class="no-preview">
-                                <i class="fas fa-file"></i>
-                                <p>لا يمكن معاينة هذا النوع من الملفات</p>
-                                <p>يمكنك تحميل الملف ومشاهدته على جهازك</p>
-                            </div>
-                        `;
-                    }
-                } else {
-                    previewBody.innerHTML = `
-                        <div class="no-preview">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <p>لا يوجد ملف مرفوع</p>
-                            <p>هذا المحتوى لا يحتوي على ملف مرفوع</p>
-                        </div>
-                    `;
-                }
-                
-                // إظهار نافذة المعاينة
-                document.getElementById('filePreviewModal').classList.add('active');
-                
-            } catch (error) {
-                console.error('خطأ في معاينة الملف:', error);
-                alert('حدث خطأ في معاينة الملف');
-            }
-        }
-
-        // دالة الحصول على رابط الملف
-        async function getFileUrl(fileName) {
-            try {
-                const fileUrl = await Database.getFileUrl(`files/${fileName}`);
-                return fileUrl || `files/${fileName}`;
-            } catch (error) {
-                console.error('خطأ في جلب رابط الملف:', error);
-                return `files/${fileName}`;
-            }
-        }
-
-        // دالة إغلاق معاينة الملف
-        function closeFilePreview() {
-            document.getElementById('filePreviewModal').classList.remove('active');
-            currentPreviewFile = null;
-        }
-
-        // دالة تحميل الملف المعروض
-        function downloadPreviewedFile() {
-            if (currentPreviewFile && currentPreviewFile.file_name) {
-                downloadFile(currentPreviewFile.id);
-            } else {
-                alert('لا يوجد ملف للتحميل');
-            }
-        }
-
-        // دالة تحميل الملف (محدثة)
-        async function downloadFile(fileId) {
-            try {
-                const files = await Database.getFiles();
-                const file = files.find(f => f.id === fileId);
-                
-                if (!file || !file.file_name) {
-                    alert('الملف غير موجود');
-                    return;
-                }
-
-                // محاكاة عملية التحميل
-                const fileUrl = await getFileUrl(file.file_name);
-                
-                // إنشاء رابط تحميل
-                const link = document.createElement('a');
-                link.href = fileUrl;
-                link.download = file.file_name;
-                link.target = '_blank';
-                
-                // إضافة الرابط للصفحة والنقر عليه برمجياً
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                
-                // تسجيل عملية التحميل في قاعدة البيانات
-                const currentStaff = JSON.parse(localStorage.getItem("currentStaff"));
-                if (currentStaff) {
-                    await Database.updateFileReadStatus(fileId, currentStaff.id, {
-                        read: true,
-                        read_date: new Date().toISOString(),
-                        staff_name: currentStaff.name,
-                        downloaded: true
-                    });
-                }
-                
-                alert(`يتم تحميل الملف: ${file.file_name}`);
-                
-            } catch (error) {
-                console.error('خطأ في تحميل الملف:', error);
-                alert('حدث خطأ في تحميل الملف');
-            }
-        }
-
-        // ========== باقي الدوال ==========
 
         // تسجيل الخروج
         function logout() {
@@ -1120,8 +840,10 @@
         // عرض نافذة الملفات الجديدة
         function showNewFilesModal() {
             const newFilesList = document.getElementById("newFilesList");
+            const remainingCount = document.getElementById("remainingCount");
+            
             newFilesList.innerHTML = newFiles.map(file => `
-                <div class="file-item">
+                <div class="file-item" id="file-${file.id}">
                     <div>
                         <strong>${file.title}</strong>
                         <div style="font-size: 12px; color: #666; margin-top: 4px;">
@@ -1129,37 +851,190 @@
                         </div>
                         ${file.note ? `<div style="font-size: 12px; color: #666; margin-top: 2px;">${file.note}</div>` : ''}
                     </div>
+                    <div class="file-actions">
+                        <button class="btn btn-primary btn-sm" onclick="previewFileFromModal('${file.id}')">
+                            <i class="fas fa-eye"></i>
+                            معاينة
+                        </button>
+                    </div>
                 </div>
             `).join('');
             
+            remainingCount.textContent = newFiles.length;
             document.getElementById("newFilesModal").classList.add("active");
         }
 
-        // تأكيد الاطلاع على الملفات الجديدة
-        async function acknowledgeNewFiles() {
+        // تحديث عرض النافذة بعد معاينة ملف
+        function updateModalDisplay() {
+            const remainingCount = document.getElementById("remainingCount");
+            remainingCount.textContent = newFiles.length;
+            
+            // إذا لم يعد هناك ملفات، أغلق النافذة وابدأ التطبيق
+            if (newFiles.length === 0) {
+                document.getElementById("newFilesModal").classList.remove("active");
+                initializeStaffInterface();
+            }
+        }
+
+        // معاينة ملف من النافذة المنبثقة
+        async function previewFileFromModal(fileId) {
             try {
                 const currentStaff = JSON.parse(localStorage.getItem("currentStaff"));
                 const currentTime = new Date().toISOString();
+                const files = await Database.getFiles();
+                const file = files.find(f => f.id === fileId);
                 
-                for (const file of newFiles) {
-                    if (!viewedFiles.includes(file.id)) {
-                        viewedFiles.push(file.id);
-                    }
-                    
-                    // تسجيل حالة الاطلاع في قاعدة البيانات
-                    await Database.updateFileReadStatus(file.id, currentStaff.id, {
-                        read: true,
-                        read_date: currentTime,
-                        staff_name: currentStaff.name
-                    });
+                if (!file) {
+                    alert("الملف غير موجود");
+                    return;
+                }
+
+                // إضافة الملف إلى قائمة الملفات التي تم الاطلاع عليها
+                if (!viewedFiles.includes(fileId)) {
+                    viewedFiles.push(fileId);
+                    localStorage.setItem("viewedFiles", JSON.stringify(viewedFiles));
                 }
                 
-                localStorage.setItem("viewedFiles", JSON.stringify(viewedFiles));
-                document.getElementById("newFilesModal").classList.remove("active");
-                await initializeStaffInterface();
+                // تسجيل حالة الاطلاع في قاعدة البيانات
+                await Database.updateFileReadStatus(fileId, currentStaff.id, {
+                    read: true,
+                    read_date: currentTime,
+                    staff_name: currentStaff.name
+                });
+                
+                // فتح محتوى الملف في نافذة جديدة
+                openFileContent(file);
+                
+                // إزالة الملف من قائمة الملفات الجديدة
+                newFiles = newFiles.filter(file => file.id !== fileId);
+                
+                // إزالة الملف من العرض في النافذة
+                const fileElement = document.getElementById(`file-${fileId}`);
+                if (fileElement) {
+                    fileElement.remove();
+                }
+                
+                // تحديث العداد والعرض
+                updateModalDisplay();
+                
             } catch (error) {
-                console.error("خطأ في تأكيد الاطلاع:", error);
+                console.error("خطأ في معاينة الملف:", error);
             }
+        }
+
+        // فتح محتوى الملف
+        function openFileContent(file) {
+            // إنشاء نافذة عرض الملف
+            const fileWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes');
+            
+            fileWindow.document.write(`
+                <!DOCTYPE html>
+                <html dir="rtl" lang="ar">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>${file.title}</title>
+                    <style>
+                        body {
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                            margin: 20px;
+                            direction: rtl;
+                            background: #f5f7fa;
+                        }
+                        .file-container {
+                            background: white;
+                            border-radius: 8px;
+                            padding: 30px;
+                            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                            max-width: 800px;
+                            margin: 0 auto;
+                        }
+                        .file-header {
+                            border-bottom: 2px solid #2c5aa0;
+                            padding-bottom: 15px;
+                            margin-bottom: 20px;
+                        }
+                        .file-header h1 {
+                            color: #2c5aa0;
+                            margin-bottom: 10px;
+                        }
+                        .file-meta {
+                            color: #666;
+                            font-size: 14px;
+                        }
+                        .file-content {
+                            line-height: 1.8;
+                            font-size: 16px;
+                        }
+                        .file-note {
+                            background: #f8f9fa;
+                            padding: 15px;
+                            border-radius: 6px;
+                            margin: 20px 0;
+                            border-right: 4px solid #ff9800;
+                        }
+                        .btn {
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                            padding: 10px 20px;
+                            background: #2c5aa0;
+                            color: white;
+                            border: none;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            text-decoration: none;
+                            margin-top: 20px;
+                        }
+                        .btn:hover {
+                            background: #1e3d72;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="file-container">
+                        <div class="file-header">
+                            <h1>${file.title}</h1>
+                            <div class="file-meta">
+                                <strong>التصنيف:</strong> ${file.category} | 
+                                <strong>التاريخ:</strong> ${file.date}
+                            </div>
+                        </div>
+                        
+                        ${file.note ? `
+                            <div class="file-note">
+                                <strong>ملاحظات:</strong> ${file.note}
+                            </div>
+                        ` : ''}
+                        
+                        <div class="file-content">
+                            ${file.file_name ? `
+                                <p><strong>اسم الملف:</strong> ${file.file_name}</p>
+                                <p>هذا ملف مرفق. في التطبيق الحقيقي، سيتم عرض محتوى الملف هنا أو توفير رابط للتحميل.</p>
+                            ` : `
+                                <p>هذا محتوى نصي. في التطبيق الحقيقي، سيتم عرض المحتوى الكامل للملف هنا.</p>
+                                <p>يمكن إضافة محتوى تفصيلي عن ${file.title} في هذا القسم.</p>
+                            `}
+                        </div>
+                        
+                        ${file.file_name ? `
+                            <button class="btn" onclick="window.opener.downloadFile('${file.id}')">
+                                <i class="fas fa-download"></i>
+                                تحميل الملف
+                            </button>
+                        ` : ''}
+                        
+                        <button class="btn" onclick="window.close()" style="background: #6c757d; margin-right: 10px;">
+                            <i class="fas fa-times"></i>
+                            إغلاق
+                        </button>
+                    </div>
+                    
+                    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"><\/script>
+                </body>
+                </html>
+            `);
+            
+            fileWindow.document.close();
         }
 
         // تهيئة واجهة الموظف
@@ -1169,7 +1044,7 @@
             await loadEvents();
             await loadTeacherSchedule();
             await loadTeachersSchedule();
-            await loadWorkScheduleInfo();
+            await showAllWorkSchedules();
             
             // إظهار قسم الملفات افتراضيًا بشكل آمن
             setTimeout(() => {
@@ -1390,6 +1265,104 @@
             } catch (error) {
                 console.error("خطأ في تحميل الملفات:", error);
             }
+        }
+
+        // مشاهدة الملف
+        async function viewFile(fileId) {
+            try {
+                const currentStaff = JSON.parse(localStorage.getItem("currentStaff"));
+                const currentTime = new Date().toISOString();
+                const files = await Database.getFiles();
+                const file = files.find(f => f.id === fileId);
+                
+                if (!file) {
+                    alert("الملف غير موجود");
+                    return;
+                }
+
+                // إضافة الملف إلى قائمة الملفات التي تم الاطلاع عليها
+                if (!viewedFiles.includes(fileId)) {
+                    viewedFiles.push(fileId);
+                    localStorage.setItem("viewedFiles", JSON.stringify(viewedFiles));
+                }
+                
+                // تسجيل حالة الاطلاع في قاعدة البيانات
+                await Database.updateFileReadStatus(fileId, currentStaff.id, {
+                    read: true,
+                    read_date: currentTime,
+                    staff_name: currentStaff.name
+                });
+                
+                // تحديث الشريط الجانبي
+                await loadCategoriesNav();
+                
+                // فتح محتوى الملف في نافذة جديدة
+                openFileContent(file);
+                
+            } catch (error) {
+                console.error("خطأ في مشاهدة الملف:", error);
+            }
+        }
+
+        // تحميل الملف
+        async function downloadFile(fileId) {
+            try {
+                const currentStaff = JSON.parse(localStorage.getItem("currentStaff"));
+                const currentTime = new Date().toISOString();
+                const files = await Database.getFiles();
+                const file = files.find(f => f.id === fileId);
+                
+                if (!file) {
+                    alert("الملف غير موجود");
+                    return;
+                }
+
+                // إضافة الملف إلى قائمة الملفات التي تم الاطلاع عليها
+                if (!viewedFiles.includes(fileId)) {
+                    viewedFiles.push(fileId);
+                    localStorage.setItem("viewedFiles", JSON.stringify(viewedFiles));
+                }
+                
+                // تسجيل حالة الاطلاع في قاعدة البيانات
+                await Database.updateFileReadStatus(fileId, currentStaff.id, {
+                    read: true,
+                    read_date: currentTime,
+                    staff_name: currentStaff.name,
+                    downloaded: true
+                });
+                
+                // تحديث الشريط الجانبي
+                await loadCategoriesNav();
+                
+                // محاكاة عملية التحميل
+                simulateFileDownload(file);
+                
+            } catch (error) {
+                console.error("خطأ في تحميل الملف:", error);
+            }
+        }
+
+        // محاكاة تحميل الملف
+        function simulateFileDownload(file) {
+            // إنشاء رابط تحميل وهمي
+            const link = document.createElement('a');
+            link.style.display = 'none';
+            
+            // في التطبيق الحقيقي، سيكون هنا رابط الملف الفعلي
+            // حالياً ننشئ ملف نصي بسيط للمحاكاة
+            const blob = new Blob([`محتوى ملف: ${file.title}\n\nالتصنيف: ${file.category}\nالتاريخ: ${file.date}\n${file.note ? `ملاحظات: ${file.note}\n` : ''}\nهذا ملف تجريبي من نظام إدارة المدرسة.`], 
+                { type: 'text/plain;charset=utf-8' });
+            
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.download = file.file_name || `${file.title}.txt`;
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            alert(`تم بدء تحميل الملف: ${file.title}`);
         }
 
         // تحميل الأحداث
@@ -1881,20 +1854,6 @@
             displayUserName();
             await checkNewFiles();
         });
-
-        // استبدال السطر في initializeStaffInterface بهذا:
-        async function initializeStaffInterface() {
-            await loadCategoriesNav();
-            await loadFiles();
-            await loadEvents();
-            await loadTeacherSchedule();
-            await loadTeachersSchedule();
-            await showAllWorkSchedules(); // بدل loadWorkScheduleInfo
-            
-            setTimeout(() => {
-                showSection('files');
-            }, 100);
-        }
     </script>
 </body>
 </html>
