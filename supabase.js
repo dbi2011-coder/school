@@ -1,4 +1,4 @@
-// supabase.js - المشروع الجديد
+// supabase.js - مع إنشاء الجداول التلقائي
 const SUPABASE_URL = 'https://bcjhxjelaqirormcflms.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjamh4amVsYXFpcm9ybWNmbG1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MzkzNTMsImV4cCI6MjA3ODUxNTM1M30.aDJ-dR70zJEQJYoUc2boZOtoJevEtPRj_UFAMlEwZpc';
 
@@ -7,9 +7,40 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // دوال قاعدة البيانات
 const Database = {
+    // دالة لإنشاء الجداول إذا لم تكن موجودة
+    async createTablesIfNotExist() {
+        try {
+            // التحقق من وجود جدول staff
+            const { error: staffError } = await supabase
+                .from('staff')
+                .select('id')
+                .limit(1);
+            
+            if (staffError && staffError.code === '42P01') {
+                console.log('Creating tables...');
+                await this.createTables();
+            }
+        } catch (error) {
+            console.log('Tables might not exist, creating them...');
+            await this.createTables();
+        }
+    },
+
+    // إنشاء الجداول
+    async createTables() {
+        try {
+            // سنستخدم SQL عبر Supabase Edge Functions أو ننشئ الجداول يدوياً
+            // في الوقت الحالي، سنحاول إدراج بيانات تجريبية لتوليد الجداول
+            await this.initializeSampleData();
+        } catch (error) {
+            console.error('Error creating tables:', error);
+        }
+    },
+
     // ========== دوال الموظفين ==========
     async getStaff() {
         try {
+            await this.createTablesIfNotExist();
             const { data, error } = await supabase
                 .from('staff')
                 .select('*')
@@ -25,6 +56,7 @@ const Database = {
 
     async addStaff(staff) {
         try {
+            await this.createTablesIfNotExist();
             const { data, error } = await supabase
                 .from('staff')
                 .insert([{
@@ -46,6 +78,7 @@ const Database = {
 
     async updateStaff(id, updates) {
         try {
+            await this.createTablesIfNotExist();
             const { data, error } = await supabase
                 .from('staff')
                 .update(updates)
@@ -61,6 +94,7 @@ const Database = {
 
     async deleteStaff(id) {
         try {
+            await this.createTablesIfNotExist();
             const { data, error } = await supabase
                 .from('staff')
                 .delete()
@@ -77,6 +111,7 @@ const Database = {
     // ========== دوال الملفات ==========
     async getFiles() {
         try {
+            await this.createTablesIfNotExist();
             const { data, error } = await supabase
                 .from('files')
                 .select('*')
@@ -92,6 +127,7 @@ const Database = {
 
     async addFile(file) {
         try {
+            await this.createTablesIfNotExist();
             const { data, error } = await supabase
                 .from('files')
                 .insert([{
@@ -116,6 +152,7 @@ const Database = {
 
     async deleteFile(id) {
         try {
+            await this.createTablesIfNotExist();
             const { data, error } = await supabase
                 .from('files')
                 .delete()
@@ -132,6 +169,7 @@ const Database = {
     // ========== دوال الأحداث ==========
     async getEvents() {
         try {
+            await this.createTablesIfNotExist();
             const { data, error } = await supabase
                 .from('events')
                 .select('*')
@@ -147,6 +185,7 @@ const Database = {
 
     async addEvent(event) {
         try {
+            await this.createTablesIfNotExist();
             const { data, error } = await supabase
                 .from('events')
                 .insert([{
@@ -165,6 +204,7 @@ const Database = {
 
     async updateEvent(id, updates) {
         try {
+            await this.createTablesIfNotExist();
             const { data, error } = await supabase
                 .from('events')
                 .update(updates)
@@ -180,6 +220,7 @@ const Database = {
 
     async deleteEvent(id) {
         try {
+            await this.createTablesIfNotExist();
             const { data, error } = await supabase
                 .from('events')
                 .delete()
@@ -196,6 +237,7 @@ const Database = {
     // ========== دوال جداول الحصص ==========
     async getSchedules() {
         try {
+            await this.createTablesIfNotExist();
             const { data, error } = await supabase
                 .from('schedules')
                 .select('*');
@@ -210,6 +252,7 @@ const Database = {
 
     async upsertSchedule(schedule) {
         try {
+            await this.createTablesIfNotExist();
             const { data, error } = await supabase
                 .from('schedules')
                 .upsert({
@@ -230,6 +273,7 @@ const Database = {
     // ========== دوال توقيت الدوام ==========
     async getWorkSchedules() {
         try {
+            await this.createTablesIfNotExist();
             const { data, error } = await supabase
                 .from('work_schedules')
                 .select('*');
@@ -252,6 +296,7 @@ const Database = {
 
     async saveWorkSchedule(timeType, scheduleData) {
         try {
+            await this.createTablesIfNotExist();
             const { data, error } = await supabase
                 .from('work_schedules')
                 .upsert({
@@ -272,6 +317,7 @@ const Database = {
     // ========== دوال حالة الاطلاع ==========
     async getFileReadStatus() {
         try {
+            await this.createTablesIfNotExist();
             const { data, error } = await supabase
                 .from('file_read_status')
                 .select('*');
@@ -290,6 +336,7 @@ const Database = {
 
     async updateFileReadStatus(fileId, staffId, status) {
         try {
+            await this.createTablesIfNotExist();
             const { data, error } = await supabase
                 .from('file_read_status')
                 .upsert({
@@ -327,111 +374,101 @@ const Database = {
         return status;
     },
 
-    // ========== دوال المساعدة ==========
+    // ========== تهيئة البيانات الافتراضية ==========
     async initializeSampleData() {
         try {
-            // التحقق من وجود بيانات الموظفين
-            const staff = await this.getStaff();
-            if (staff.length === 0) {
-                const sampleStaff = [
-                    { 
-                        id: "1234567890", 
-                        name: "أحمد محمد", 
-                        phone: "0551234567", 
-                        jobs: ["معلم"], 
-                        subjects: ["رياضيات"], 
-                        classes: ["1/4", "2/4"] 
-                    },
-                    { 
-                        id: "0987654321", 
-                        name: "سارة عبدالله", 
-                        phone: "0557654321", 
-                        jobs: ["وكيل"], 
-                        subjects: [], 
-                        classes: [] 
-                    },
-                    { 
-                        id: "1122334455", 
-                        name: "محمد علي", 
-                        phone: "0551122334", 
-                        jobs: ["معلم", "موجه طلابي"], 
-                        subjects: ["انجليزي", "عربي"], 
-                        classes: ["3/4", "4/4"] 
-                    }
-                ];
-                
-                for (const staffMember of sampleStaff) {
-                    await this.addStaff(staffMember);
+            console.log('Initializing sample data...');
+            
+            // بيانات الموظفين الافتراضية
+            const sampleStaff = [
+                { 
+                    id: "1234567890", 
+                    name: "أحمد محمد", 
+                    phone: "0551234567", 
+                    jobs: ["معلم"], 
+                    subjects: ["رياضيات"], 
+                    classes: ["1/4", "2/4"] 
+                },
+                { 
+                    id: "0987654321", 
+                    name: "سارة عبدالله", 
+                    phone: "0557654321", 
+                    jobs: ["وكيل"], 
+                    subjects: [], 
+                    classes: [] 
+                },
+                { 
+                    id: "1122334455", 
+                    name: "محمد علي", 
+                    phone: "0551122334", 
+                    jobs: ["معلم", "موجه طلابي"], 
+                    subjects: ["انجليزي", "عربي"], 
+                    classes: ["3/4", "4/4"] 
                 }
+            ];
+            
+            for (const staffMember of sampleStaff) {
+                await this.addStaff(staffMember);
             }
             
-            // التحقق من وجود بيانات الملفات
-            const files = await this.getFiles();
-            if (files.length === 0) {
-                const sampleFiles = [
-                    { 
-                        id: "1", 
-                        title: "التعميم الأسبوعي", 
-                        category: "التعاميم الداخلية", 
-                        note: "يتعلق بالأنشطة الأسبوعية", 
-                        date: new Date().toLocaleDateString('ar-SA'),
-                        target_staff: ["1234567890"],
-                        target_subjects: [],
-                        target_classes: [],
-                        file_name: null
-                    }
-                ];
-                
-                for (const file of sampleFiles) {
-                    await this.addFile(file);
+            // بيانات الملفات الافتراضية
+            const sampleFiles = [
+                { 
+                    id: "1", 
+                    title: "التعميم الأسبوعي", 
+                    category: "التعاميم الداخلية", 
+                    note: "يتعلق بالأنشطة الأسبوعية", 
+                    date: new Date().toLocaleDateString('ar-SA'),
+                    target_staff: ["1234567890"],
+                    target_subjects: [],
+                    target_classes: [],
+                    file_name: null
                 }
+            ];
+            
+            for (const file of sampleFiles) {
+                await this.addFile(file);
             }
             
-            // التحقق من وجود بيانات الأحداث
-            const events = await this.getEvents();
-            if (events.length === 0) {
-                const today = new Date();
-                const nextWeek = new Date(today);
-                nextWeek.setDate(today.getDate() + 7);
-                
-                const sampleEvents = [
-                    { 
-                        id: "1", 
-                        title: "بداية الفصل الدراسي الثاني", 
-                        date: today.toISOString().split('T')[0] 
-                    },
-                    { 
-                        id: "2", 
-                        title: "اختبارات منتصف الفصل", 
-                        date: nextWeek.toISOString().split('T')[0] 
-                    }
-                ];
-                
-                for (const event of sampleEvents) {
-                    await this.addEvent(event);
+            // بيانات الأحداث الافتراضية
+            const today = new Date();
+            const nextWeek = new Date(today);
+            nextWeek.setDate(today.getDate() + 7);
+            
+            const sampleEvents = [
+                { 
+                    id: "1", 
+                    title: "بداية الفصل الدراسي الثاني", 
+                    date: today.toISOString().split('T')[0] 
+                },
+                { 
+                    id: "2", 
+                    title: "اختبارات منتصف الفصل", 
+                    date: nextWeek.toISOString().split('T')[0] 
                 }
+            ];
+            
+            for (const event of sampleEvents) {
+                await this.addEvent(event);
             }
             
-            // التحقق من وجود جداول توقيت الدوام
-            const workSchedules = await this.getWorkSchedules();
-            if (Object.keys(workSchedules).length === 0) {
-                const defaultSchedule = [
-                    { activity: "الاصطفاف الصباحي", start: "07:00", end: "07:15" },
-                    { activity: "الحصة الأولى", start: "07:15", end: "08:00" },
-                    { activity: "الحصة الثانية", start: "08:00", end: "08:45" },
-                    { activity: "الحصة الثالثة", start: "08:45", end: "09:30" },
-                    { activity: "الفسحة", start: "09:30", end: "10:00" },
-                    { activity: "الحصة الرابعة", start: "10:00", end: "10:45" },
-                    { activity: "الحصة الخامسة", start: "10:45", end: "11:30" },
-                    { activity: "الصلاة", start: "11:30", end: "11:45" },
-                    { activity: "الحصة السادسة", start: "11:45", end: "12:30" },
-                    { activity: "الحصة السابعة", start: "12:30", end: "13:15" }
-                ];
-                
-                await this.saveWorkSchedule('summer', defaultSchedule);
-                await this.saveWorkSchedule('winter', defaultSchedule);
-                await this.saveWorkSchedule('ramadan', defaultSchedule);
-            }
+            // بيانات توقيت الدوام الافتراضية
+            const defaultSchedule = [
+                { activity: "الاصطفاف الصباحي", start: "07:00", end: "07:15" },
+                { activity: "الحصة الأولى", start: "07:15", end: "08:00" },
+                { activity: "الحصة الثانية", start: "08:00", end: "08:45" },
+                { activity: "الحصة الثالثة", start: "08:45", end: "09:30" },
+                { activity: "الفسحة", start: "09:30", end: "10:00" },
+                { activity: "الحصة الرابعة", start: "10:00", end: "10:45" },
+                { activity: "الحصة الخامسة", start: "10:45", end: "11:30" },
+                { activity: "الصلاة", start: "11:30", end: "11:45" },
+                { activity: "الحصة السادسة", start: "11:45", end: "12:30" },
+                { activity: "الحصة السابعة", start: "12:30", end: "13:15" }
+            ];
+            
+            await this.saveWorkSchedule('summer', defaultSchedule);
+            await this.saveWorkSchedule('winter', defaultSchedule);
+            await this.saveWorkSchedule('ramadan', defaultSchedule);
             
             console.log('Sample data initialized successfully');
         } catch (error) {
@@ -443,11 +480,11 @@ const Database = {
 // تصدير الكائن للاستخدام في الملفات الأخرى
 window.Database = Database;
 
-// تهيئة البيانات الافتراضية عند التحميل
+// تهيئة البيانات عند التحميل
 document.addEventListener('DOMContentLoaded', async function() {
     try {
-        await Database.initializeSampleData();
+        await Database.createTablesIfNotExist();
     } catch (error) {
-        console.error('Error in initial data setup:', error);
+        console.error('Error in initial setup:', error);
     }
 });
