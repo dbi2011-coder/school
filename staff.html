@@ -530,6 +530,56 @@
             display: inline-block;
         }
 
+        /* نافذة عرض الملف */
+        .file-viewer-modal .modal-content {
+            max-width: 95%;
+            max-height: 95%;
+            width: 95%;
+            height: 95%;
+        }
+
+        .file-viewer-content {
+            max-height: calc(95vh - 200px);
+            overflow: auto;
+        }
+
+        .file-preview {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 10px 0;
+            border: 1px solid #e9ecef;
+        }
+        
+        .file-content {
+            line-height: 1.8;
+            font-size: 16px;
+            white-space: pre-wrap;
+        }
+        
+        .file-meta {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .file-image {
+            max-width: 100%;
+            max-height: 70vh;
+            display: block;
+            margin: 0 auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .file-iframe {
+            width: 100%;
+            height: 70vh;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
         /* التجاوب */
         @media (max-width: 1024px) {
             .sidebar {
@@ -623,28 +673,13 @@
             .work-schedule-table td {
                 padding: 8px 4px;
             }
-        }
 
-        /* أنماط نافذة المعاينة */
-        .file-preview {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 10px 0;
-            border: 1px solid #e9ecef;
-        }
-        
-        .file-content {
-            line-height: 1.8;
-            font-size: 16px;
-            white-space: pre-wrap;
-        }
-        
-        .file-meta {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
+            .file-viewer-modal .modal-content {
+                width: 98%;
+                height: 98%;
+                max-width: 98%;
+                max-height: 98%;
+            }
         }
     </style>
 </head>
@@ -666,15 +701,15 @@
     </div>
 
     <!-- نافذة عرض الملف -->
-    <div id="fileViewerModal" class="modal">
-        <div class="modal-content" style="max-width: 90%; max-height: 90%;">
+    <div id="fileViewerModal" class="modal file-viewer-modal">
+        <div class="modal-content">
             <div class="modal-header">
                 <h3 id="fileViewerTitle">عرض الملف</h3>
                 <button class="close-modal" onclick="closeFileViewer()">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+            <div class="modal-body file-viewer-content">
                 <div id="fileViewerContent"></div>
             </div>
             <div class="modal-footer">
@@ -970,6 +1005,8 @@
             }
         }
 
+        // ========== دوال المعاينة والتحميل الحقيقية ==========
+
         // فتح محتوى الملف
         async function openFileContent(file) {
             currentViewingFile = file;
@@ -995,26 +1032,57 @@
                 `;
             }
             
-            // إذا كان هناك ملف مرفق، نعرض معلوماته فقط
+            // إذا كان هناك ملف مرفق، نعرضه
             if (file.file_name) {
                 const fileExtension = file.file_name.split('.').pop().toLowerCase();
-                const fileType = getFileType(fileExtension);
                 
-                content += `
-                    <div class="file-preview">
-                        <div style="text-align: center; padding: 40px;">
-                            <i class="${fileType.icon}" style="font-size: 64px; color: ${fileType.color};"></i>
-                            <h3 style="margin: 20px 0; color: #2c5aa0;">${fileType.name}</h3>
-                            <p style="font-size: 16px; color: #666;">
-                                <strong>${file.file_name}</strong><br>
-                                <span style="font-size: 14px;">حجم الملف: ${getFileSize()}</span>
-                            </p>
-                            <p style="margin-top: 20px; color: #888;">
-                                يمكنك تحميل الملف ومشاهدته على جهازك باستخدام البرنامج المناسب.
-                            </p>
-                        </div>
-                    </div>
-                `;
+                if (isImageFile(fileExtension)) {
+                    // إذا كان ملف صورة، نعرضه مباشرة
+                    const fileUrl = await getFileUrl(file);
+                    if (fileUrl) {
+                        content += `
+                            <div class="file-preview">
+                                <img src="${fileUrl}" alt="${file.title}" class="file-image" onerror="handleImageError(this)">
+                            </div>
+                        `;
+                    } else {
+                        content += showFileNotAvailable(file);
+                    }
+                } else if (isPdfFile(fileExtension)) {
+                    // إذا كان ملف PDF، نعرضه في iframe
+                    const fileUrl = await getFileUrl(file);
+                    if (fileUrl) {
+                        content += `
+                            <div class="file-preview">
+                                <iframe src="${fileUrl}" class="file-iframe" frameborder="0"></iframe>
+                            </div>
+                        `;
+                    } else {
+                        content += showFileNotAvailable(file);
+                    }
+                } else if (isTextFile(fileExtension)) {
+                    // إذا كان ملف نصي، نحاول عرض محتواه
+                    const fileUrl = await getFileUrl(file);
+                    if (fileUrl) {
+                        try {
+                            const response = await fetch(fileUrl);
+                            const textContent = await response.text();
+                            content += `
+                                <div class="file-preview">
+                                    <h4 style="color: #2c5aa0; margin-bottom: 15px;">محتوى الملف:</h4>
+                                    <div class="file-content">${escapeHtml(textContent)}</div>
+                                </div>
+                            `;
+                        } catch (error) {
+                            content += showFileInfo(file);
+                        }
+                    } else {
+                        content += showFileInfo(file);
+                    }
+                } else {
+                    // للملفات الأخرى، نعرض معلوماتها
+                    content += showFileInfo(file);
+                }
             } else {
                 // إذا لم يكن هناك ملف مرفق، نعرض المحتوى النصي فقط
                 content += `
@@ -1030,6 +1098,85 @@
             
             contentDiv.innerHTML = content;
             document.getElementById('fileViewerModal').classList.add('active');
+        }
+
+        // الحصول على رابط الملف
+        async function getFileUrl(file) {
+            if (file.file_url) {
+                return file.file_url;
+            }
+            
+            // محاولة الحصول من Supabase Storage
+            try {
+                const fileUrl = await Database.getFileUrl(file.id, file.file_name);
+                return fileUrl;
+            } catch (error) {
+                console.error('خطأ في الحصول على رابط الملف:', error);
+                return null;
+            }
+        }
+
+        // عرض معلومات الملف عندما لا يكون متاحاً
+        function showFileInfo(file) {
+            const fileExtension = file.file_name.split('.').pop().toLowerCase();
+            const fileType = getFileType(fileExtension);
+            
+            return `
+                <div class="file-preview">
+                    <div style="text-align: center; padding: 40px;">
+                        <i class="${fileType.icon}" style="font-size: 64px; color: ${fileType.color};"></i>
+                        <h3 style="margin: 20px 0; color: #2c5aa0;">${fileType.name}</h3>
+                        <p style="font-size: 16px; color: #666;">
+                            <strong>${file.file_name}</strong>
+                        </p>
+                        <p style="margin-top: 20px; color: #888;">
+                            يمكنك تحميل الملف ومشاهدته على جهازك باستخدام البرنامج المناسب.
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // عرض رسالة عدم توفر الملف
+        function showFileNotAvailable(file) {
+            return `
+                <div class="file-preview">
+                    <div style="text-align: center; padding: 40px;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 64px; color: #ffc107;"></i>
+                        <h3 style="margin: 20px 0; color: #e74c3c;">الملف غير متاح للمعاينة</h3>
+                        <p style="font-size: 16px; color: #666;">
+                            <strong>${file.file_name}</strong>
+                        </p>
+                        <p style="margin-top: 20px; color: #888;">
+                            يمكنك تحميل الملف ومشاهدته على جهازك.
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // معالجة خطأ تحميل الصورة
+        function handleImageError(img) {
+            img.style.display = 'none';
+            const container = img.parentElement;
+            container.innerHTML = showFileNotAvailable(currentViewingFile);
+        }
+
+        // التحقق إذا كان الملف صورة
+        function isImageFile(extension) {
+            const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'];
+            return imageExtensions.includes(extension.toLowerCase());
+        }
+
+        // التحقق إذا كان الملف PDF
+        function isPdfFile(extension) {
+            return extension.toLowerCase() === 'pdf';
+        }
+
+        // التحقق إذا كان الملف نصياً
+        function isTextFile(extension) {
+            const textExtensions = ['txt', 'html', 'htm', 'css', 'js', 'json', 'xml'];
+            return textExtensions.includes(extension.toLowerCase());
         }
 
         // الحصول على نوع الملف
@@ -1050,10 +1197,11 @@
             return types[extension] || { name: `ملف ${extension.toUpperCase()}`, icon: 'fas fa-file', color: '#6c757d' };
         }
 
-        // محاكاة حجم الملف
-        function getFileSize() {
-            const sizes = ['250 KB', '512 KB', '1.2 MB', '2.5 MB', '4.7 MB'];
-            return sizes[Math.floor(Math.random() * sizes.length)];
+        // تهريب النص HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // إغلاق نافذة المعاينة
@@ -1099,59 +1247,43 @@
                 // تحديث الشريط الجانبي
                 await loadCategoriesNav();
                 
-                // إنشاء ملف حقيقي للتحميل
-                createDownloadableFile(file);
+                // تحميل الملف الحقيقي
+                if (file.file_name) {
+                    const fileUrl = await getFileUrl(file);
+                    if (fileUrl) {
+                        // إنشاء رابط تحميل مباشر
+                        const link = document.createElement('a');
+                        link.href = fileUrl;
+                        link.download = file.file_name;
+                        link.target = '_blank';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        
+                        // إغلاق نافذة المعاينة بعد التحميل
+                        setTimeout(() => {
+                            closeFileViewer();
+                            alert(`تم تحميل الملف "${file.title}" بنجاح`);
+                        }, 1000);
+                    } else {
+                        alert("تعذر العثور على الملف للتحميل");
+                    }
+                } else {
+                    // إذا لم يكن هناك ملف مرفق، ننشئ ملف نصي بسيط
+                    createTextFile(file);
+                    closeFileViewer();
+                }
                 
             } catch (error) {
                 console.error("خطأ في تحميل الملف:", error);
+                alert("حدث خطأ في تحميل الملف");
             }
         }
 
-        // إنشاء ملف حقيقي للتحميل
-        function createDownloadableFile(file) {
+        // إنشاء ملف نصي للملفات بدون مرفق
+        function createTextFile(file) {
             const link = document.createElement('a');
-            link.style.display = 'none';
-            
-            let content = '';
-            let mimeType = 'text/plain;charset=utf-8';
-            let extension = 'txt';
-            let fileName = file.file_name || `${file.title}.${extension}`;
-            
-            // إذا كان للملف اسم مرفق، نستخدم امتداده
-            if (file.file_name) {
-                const fileExt = file.file_name.split('.').pop().toLowerCase();
-                extension = fileExt;
-                
-                // تحديد نوع MIME بناءً على الامتداد
-                const mimeTypes = {
-                    'pdf': 'application/pdf',
-                    'doc': 'application/msword',
-                    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    'xls': 'application/vnd.ms-excel',
-                    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    'jpg': 'image/jpeg',
-                    'jpeg': 'image/jpeg',
-                    'png': 'image/png',
-                    'txt': 'text/plain'
-                };
-                
-                mimeType = mimeTypes[extension] || 'text/plain';
-                
-                // محتوى بسيط للملف
-                content = `
-تعميم مدرسي - ${file.title}
-
-التصنيف: ${file.category}
-التاريخ: ${file.date}
-${file.note ? `ملاحظات: ${file.note}` : ''}
-
----
-هذا ملف تم إنشاؤه تلقائياً من نظام إدارة المدرسة.
-الملف الأصلي: ${file.file_name}
-        `;
-            } else {
-                // محتوى نصي للملفات بدون مرفق
-                content = `
+            const content = `
 ${file.title}
 
 التصنيف: ${file.category}
@@ -1159,26 +1291,18 @@ ${file.title}
 ${file.note ? `ملاحظات: ${file.note}` : ''}
 
 ${file.note || 'لا يوجد محتوى نصي إضافي.'}
-        `;
-            }
-            
-            const blob = new Blob([content], { type: mimeType });
+    `;
+    
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             link.href = url;
-            link.download = fileName;
-            
+            link.download = `${file.title}.txt`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
             
-            // إغلاق نافذة المعاينة بعد التحميل
-            closeFileViewer();
-            
-            // رسالة تأكيد
-            setTimeout(() => {
-                alert(`تم تحميل الملف "${file.title}" بنجاح`);
-            }, 500);
+            alert(`تم تحميل الملف "${file.title}" بنجاح`);
         }
 
         // مشاهدة الملف
