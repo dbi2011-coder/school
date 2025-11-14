@@ -1,28 +1,12 @@
-// supabase.js - مع دعم التشفير
-const SUPABASE_URL = 'https://bhquruemuzuulyoqwxln.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJocXVydWVtdXp1dWx5b3F3eGxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4NjY0MjAsImV4cCI6MjA3ODQ0MjQyMH0.2zsLWUAv0w7SJb7EUR5fPPHnOg6WaROMfiu_0yayeWw';
+// supabase.js - المشروع الجديد
+const SUPABASE_URL = 'https://bcjhxjelaqirormcflms.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjamh4amVsYXFpcm9ybWNmbG1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MzkzNTMsImV4cCI6MjA3ODUxNTM1M30.aDJ-dR70zJEQJYoUc2boZOtoJevEtPRj_UFAMlEwZpc';
 
 // تهيئة Supabase
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// دوال قاعدة البيانات مع التشفير
+// دوال قاعدة البيانات
 const Database = {
-    // دالة للتحقق من بيانات المدير مع التشفير
-    async verifyAdminLogin(username, password) {
-        const { data, error } = await supabase
-            .rpc('verify_admin_login', {
-                input_username: username,
-                input_password: password
-            });
-        
-        if (error) {
-            console.error('خطأ في التحقق من المدير:', error);
-            return { isValid: false, schoolName: '' };
-        }
-        
-        return data[0] || { isValid: false, schoolName: '' };
-    },
-
     // دوال الموظفين
     async getStaff() {
         const { data, error } = await supabase
