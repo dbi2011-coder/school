@@ -2928,34 +2928,6 @@
             return schedule;
         }
 
-        // التأكد من اكتمال الجدول
-        function ensureCompleteSchedule(schedule) {
-            const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
-            const periods = 7;
-            
-            const completeSchedule = {};
-            
-            days.forEach(day => {
-                if (!schedule[day]) {
-                    completeSchedule[day] = [];
-                    for (let i = 0; i < periods; i++) {
-                        completeSchedule[day].push({ subject: '', class: '' });
-                    }
-                } else {
-                    completeSchedule[day] = [...schedule[day]];
-                    // التأكد من أن كل يوم يحتوي على 7 حصص
-                    while (completeSchedule[day].length < periods) {
-                        completeSchedule[day].push({ subject: '', class: '' });
-                    }
-                    while (completeSchedule[day].length > periods) {
-                        completeSchedule[day].pop();
-                    }
-                }
-            });
-            
-            return completeSchedule;
-        }
-
         // تحميل جدول المعلم (مُصلح)
         async function loadTeacherSchedule() {
             const teacherId = document.getElementById("scheduleTeacher").value;
@@ -2985,6 +2957,34 @@
                 // عرض جدول فارغ في حالة الخطأ
                 renderSchedule(createEmptySchedule());
             }
+        }
+
+        // التأكد من اكتمال الجدول
+        function ensureCompleteSchedule(schedule) {
+            const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
+            const periods = 7;
+            
+            const completeSchedule = {};
+            
+            days.forEach(day => {
+                if (!schedule[day]) {
+                    completeSchedule[day] = [];
+                    for (let i = 0; i < periods; i++) {
+                        completeSchedule[day].push({ subject: '', class: '' });
+                    }
+                } else {
+                    completeSchedule[day] = [...schedule[day]];
+                    // التأكد من أن كل يوم يحتوي على 7 حصص
+                    while (completeSchedule[day].length < periods) {
+                        completeSchedule[day].push({ subject: '', class: '' });
+                    }
+                    while (completeSchedule[day].length > periods) {
+                        completeSchedule[day].pop();
+                    }
+                }
+            });
+            
+            return completeSchedule;
         }
 
         // عرض الجدول
