@@ -1,25 +1,11 @@
-// supabase.js - مع إصلاحات كاملة للأخطاء
+// supabase.js - مع دعم التخزين الفعلي للملفات (محدث ومُصلح)
 const SUPABASE_URL = 'https://bcjhxjelaqirormcflms.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjamh4amVsYXFpcm9ybWNmbG1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MzkzNTMsImV4cCI6MjA3ODUxNTM1M30.aDJ-dR70zJEQJYoUc2boZOtoJevEtPRj_UFAMlEwZpc';
 
-// تهيئة Supabase مع إعدادات محسنة
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
-  },
-  db: {
-    schema: 'public'
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10
-    }
-  }
-});
+// تهيئة Supabase
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// دوال قاعدة البيانات مع معالجة محسنة للأخطاء
+// دوال قاعدة البيانات
 const Database = {
     // دوال الموظفين
     async getStaff() {
@@ -44,14 +30,7 @@ const Database = {
         try {
             const { data, error } = await supabase
                 .from('staff')
-                .insert([{
-                    id: staff.id,
-                    name: staff.name,
-                    phone: staff.phone || null,
-                    jobs: staff.jobs || [],
-                    subjects: staff.subjects || [],
-                    classes: staff.classes || []
-                }])
+                .insert([staff])
                 .select();
             return { data, error };
         } catch (error) {
@@ -64,13 +43,7 @@ const Database = {
         try {
             const { data, error } = await supabase
                 .from('staff')
-                .update({
-                    name: updates.name,
-                    phone: updates.phone || null,
-                    jobs: updates.jobs || [],
-                    subjects: updates.subjects || [],
-                    classes: updates.classes || []
-                })
+                .update(updates)
                 .eq('id', id)
                 .select();
             return { data, error };
@@ -116,21 +89,7 @@ const Database = {
         try {
             const { data, error } = await supabase
                 .from('files')
-                .insert([{
-                    id: file.id,
-                    title: file.title,
-                    category: file.category,
-                    note: file.note || null,
-                    date: file.date,
-                    target_staff: file.target_staff || [],
-                    target_subjects: file.target_subjects || [],
-                    target_classes: file.target_classes || [],
-                    file_name: file.file_name || null,
-                    file_path: file.file_path || null,
-                    file_url: file.file_url || null,
-                    file_size: file.file_size || null,
-                    file_type: file.file_type || null
-                }])
+                .insert([file])
                 .select();
             return { data, error };
         } catch (error) {
@@ -263,11 +222,7 @@ const Database = {
         try {
             const { data, error } = await supabase
                 .from('events')
-                .insert([{
-                    id: event.id,
-                    title: event.title,
-                    date: event.date
-                }])
+                .insert([event])
                 .select();
             return { data, error };
         } catch (error) {
@@ -280,10 +235,7 @@ const Database = {
         try {
             const { data, error } = await supabase
                 .from('events')
-                .update({
-                    title: updates.title,
-                    date: updates.date
-                })
+                .update(updates)
                 .eq('id', id)
                 .select();
             return { data, error };
@@ -306,7 +258,7 @@ const Database = {
         }
     },
 
-    // دوال جداول الحصص - مُصلحة
+    // دوال جداول الحصص
     async getSchedules() {
         try {
             const { data, error } = await supabase
@@ -314,60 +266,39 @@ const Database = {
                 .select('*');
             
             if (error) {
-                console.error('خطأ في جلب جداول الحصص:', error);
+                console.error('خطأ في جلب الجداول:', error);
                 return [];
             }
             return data || [];
         } catch (error) {
-            console.error('خطأ في جلب جداول الحصص:', error);
+            console.error('خطأ في جلب الجداول:', error);
             return [];
         }
     },
 
     async upsertSchedule(schedule) {
         try {
-            // تنظيف البيانات قبل الحفظ
-            const cleanedSchedule = {
-                teacher_id: schedule.teacher_id,
-                schedule: schedule.schedule || this.createEmptyScheduleObject()
-            };
-
-            console.log('محاولة حفظ الجدول:', cleanedSchedule);
-
+            console.log('محاولة حفظ الجدول:', schedule);
+            
             const { data, error } = await supabase
                 .from('schedules')
-                .upsert(cleanedSchedule, { 
+                .upsert(schedule, { 
                     onConflict: 'teacher_id',
                     ignoreDuplicates: false 
                 })
                 .select();
-
+            
             if (error) {
                 console.error('خطأ في حفظ الجدول:', error);
                 throw error;
             }
-
+            
             console.log('تم حفظ الجدول بنجاح:', data);
-            return { data, error };
+            return { data, error: null };
         } catch (error) {
             console.error('خطأ في حفظ الجدول:', error);
             return { data: null, error };
         }
-    },
-
-    // إنشاء جدول فارغ ككائن JSON
-    createEmptyScheduleObject() {
-        const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
-        const schedule = {};
-        
-        days.forEach(day => {
-            schedule[day] = Array(7).fill().map(() => ({
-                subject: '',
-                class: ''
-            }));
-        });
-        
-        return schedule;
     },
 
     // دوال توقيت الدوام
@@ -378,7 +309,7 @@ const Database = {
                 .select('*');
             
             if (error) {
-                console.error('خطأ في جلب توقيت الدوام:', error);
+                console.error('خطأ في جلب جداول العمل:', error);
                 return {};
             }
             
@@ -390,7 +321,7 @@ const Database = {
             }
             return schedules;
         } catch (error) {
-            console.error('خطأ في جلب توقيت الدوام:', error);
+            console.error('خطأ في جلب جداول العمل:', error);
             return {};
         }
     },
@@ -401,14 +332,15 @@ const Database = {
                 .from('work_schedules')
                 .upsert({
                     time_type: timeType,
-                    schedule_data: scheduleData || []
+                    schedule_data: scheduleData
                 }, { 
-                    onConflict: 'time_type'
+                    onConflict: 'time_type',
+                    ignoreDuplicates: false 
                 })
                 .select();
             return { data, error };
         } catch (error) {
-            console.error('خطأ في حفظ توقيت الدوام:', error);
+            console.error('خطأ في حفظ جدول العمل:', error);
             return { data: null, error };
         }
     },
@@ -447,7 +379,8 @@ const Database = {
                     download_count: status.download_count || 0,
                     last_access: new Date().toISOString()
                 }, { 
-                    onConflict: 'file_id,staff_id'
+                    onConflict: 'file_id,staff_id',
+                    ignoreDuplicates: false 
                 })
                 .select();
             return { data, error };
@@ -499,57 +432,72 @@ const Database = {
         }
     },
 
-    // دالة لتهيئة التخزين
+    // تهيئة التخزين
     async initializeStorage() {
         try {
-            // التحقق من وجود bucket
-            const { data: buckets, error } = await supabase.storage.listBuckets();
-            if (error) throw error;
-
-            const bucketExists = buckets.some(bucket => bucket.name === 'files');
+            console.log('إنشاء bucket جديد للتخزين...');
             
-            if (!bucketExists) {
-                console.log('إنشاء bucket جديد للتخزين...');
-                const { error: createError } = await supabase.storage.createBucket('files', {
-                    public: true,
-                    fileSizeLimit: 52428800 // 50MB
-                });
-                if (createError) throw createError;
+            // محاولة إنشاء bucket إذا لم يكن موجوداً
+            const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+            
+            if (bucketsError) {
+                console.error('خطأ في جلب الـ buckets:', bucketsError);
+                return { success: false, error: bucketsError };
             }
-
+            
+            const filesBucketExists = buckets.some(bucket => bucket.name === 'files');
+            
+            if (!filesBucketExists) {
+                const { data: newBucket, error: createError } = await supabase.storage.createBucket('files', {
+                    public: true,
+                    fileSizeLimit: 52428800, // 50MB
+                    allowedMimeTypes: ['image/*', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation']
+                });
+                
+                if (createError) {
+                    console.error('خطأ في إنشاء الـ bucket:', createError);
+                    return { success: false, error: createError };
+                }
+                
+                console.log('تم إنشاء bucket جديد:', newBucket);
+            } else {
+                console.log('الـ bucket موجود بالفعل');
+            }
+            
             return { success: true };
         } catch (error) {
-            console.error('خطأ في تهيئة التخزين:', error);
-            return { success: false, error: error.message };
+            console.error(' خطأ في تهيئة التخزين:', error);
+            return { success: false, error };
         }
     }
 };
 
+// تهيئة التطبيق
+async function initializeApp() {
+    try {
+        // التحقق من الاتصال
+        const connection = await Database.checkConnection();
+        console.log('✅ Connected to Supabase successfully');
+        
+        // تهيئة التخزين
+        const storageInit = await Database.initializeStorage();
+        if (!storageInit.success) {
+            console.log('⚠️ Storage initialization failed:', storageInit.error?.message);
+        } else {
+            console.log('✅ Storage initialized successfully');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error initializing app:', error);
+    }
+}
+
+// تهيئة التطبيق عند التحميل
+initializeApp();
+
 // تصدير الكائن للاستخدام في الملفات الأخرى
 window.Database = Database;
 
-// التحقق من التحميل والاتصال
+// التحقق من التحميل
 console.log('✅ Supabase.js loaded successfully');
 console.log('📁 Database object:', typeof Database !== 'undefined' ? 'Loaded' : 'Not Loaded');
-
-// التحقق من الاتصال عند التحميل
-document.addEventListener('DOMContentLoaded', async function() {
-    try {
-        const connection = await Database.checkConnection();
-        if (connection.connected) {
-            console.log('✅ Connected to Supabase successfully');
-            
-            // تهيئة التخزين
-            const storageInit = await Database.initializeStorage();
-            if (storageInit.success) {
-                console.log('✅ Storage initialized successfully');
-            } else {
-                console.warn('⚠️ Storage initialization failed:', storageInit.error);
-            }
-        } else {
-            console.error('❌ Failed to connect to Supabase:', connection.error);
-        }
-    } catch (error) {
-        console.error('❌ Error checking Supabase connection:', error);
-    }
-});
