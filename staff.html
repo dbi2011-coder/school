@@ -562,6 +562,25 @@
             margin-top: 15px;
         }
 
+        /* تنسيقات إضافية للملفات */
+        .file-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .file-size {
+            color: #007bff;
+        }
+
+        .file-type {
+            color: #28a745;
+        }
+
+        .file-uploaded {
+            color: #28a745;
+        }
+
         /* التجاوب */
         @media (max-width: 1024px) {
             .sidebar {
@@ -898,10 +917,13 @@
                     <div class="file-modal-header">
                         <div>
                             <strong>${file.title}</strong>
-                            <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                            <div class="file-info">
                                 ${file.category} - ${file.date}
+                                ${file.file_size ? ` - <span class="file-size">${(file.file_size / 1024 / 1024).toFixed(2)} MB</span>` : ''}
+                                ${file.file_type ? ` - <span class="file-type">${file.file_type}</span>` : ''}
                             </div>
-                            ${file.note ? `<div style="font-size: 12px; color: #666; margin-top: 2px;">${file.note}</div>` : ''}
+                            ${file.note ? `<div class="file-info">${file.note}</div>` : ''}
+                            ${file.file_url ? `<div class="file-uploaded"><i class="fas fa-check-circle"></i> ملف مرفوع</div>` : ''}
                         </div>
                         <button class="btn btn-primary btn-sm" onclick="viewNewFileContent(${index})">
                             <i class="fas fa-eye"></i>
@@ -922,24 +944,43 @@
             const file = newFiles[fileIndex];
             currentViewingFileIndex = fileIndex;
             
-            // عرض محتوى الملف
-            document.getElementById("fileContentTitle").textContent = file.title;
-            
-            // محاكاة محتوى الملف (في تطبيق حقيقي سيتم جلب المحتوى الفعلي)
-            const fileContent = `
-                <h4>${file.title}</h4>
-                <p><strong>التصنيف:</strong> ${file.category}</p>
-                <p><strong>التاريخ:</strong> ${file.date}</p>
-                ${file.note ? `<p><strong>ملاحظات:</strong> ${file.note}</p>` : ''}
-                <hr>
-                <div style="margin-top: 20px;">
-                    <p>هذا هو محتوى الملف "${file.title}". في التطبيق الحقيقي، سيتم عرض المحتوى الفعلي للملف هنا.</p>
-                    <p>يمكن أن يتضمن المحتوى نصوصًا، صورًا، جداول، أو أي نوع آخر من المحتوى حسب نوع الملف.</p>
-                </div>
-            `;
-            
-            document.getElementById("fileContentDisplay").innerHTML = fileContent;
-            document.getElementById("fileContentModal").classList.add("active");
+            // إذا كان هناك ملف فعلي مرفوع
+            if (file.file_url) {
+                // فتح الملف في نافذة جديدة
+                window.open(file.file_url, '_blank');
+                
+                // تسجيل الاطلاع
+                await markFileAsViewed(file.id);
+                
+                // إزالة الملف من قائمة الملفات الجديدة
+                newFiles.splice(currentViewingFileIndex, 1);
+                
+                // إذا لم يتبقى ملفات جديدة، إغلاق النافذة الرئيسية
+                if (newFiles.length === 0) {
+                    document.getElementById("newFilesModal").classList.remove("active");
+                    await initializeStaffInterface();
+                } else {
+                    // تحديث قائمة الملفات الجديدة
+                    showNewFilesModal();
+                }
+            } else {
+                // إذا لم يكن هناك ملف فعلي، عرض محتوى افتراضي
+                document.getElementById("fileContentTitle").textContent = file.title;
+                
+                const fileContent = `
+                    <h4>${file.title}</h4>
+                    <p><strong>التصنيف:</strong> ${file.category}</p>
+                    <p><strong>التاريخ:</strong> ${file.date}</p>
+                    ${file.note ? `<p><strong>ملاحظات:</strong> ${file.note}</p>` : ''}
+                    <hr>
+                    <div style="margin-top: 20px;">
+                        <p>هذا الملف لا يحتوي على محتوى مرفوع. يرجى التواصل مع الإدارة إذا كنت بحاجة إلى محتوى هذا الملف.</p>
+                    </div>
+                `;
+                
+                document.getElementById("fileContentDisplay").innerHTML = fileContent;
+                document.getElementById("fileContentModal").classList.add("active");
+            }
         }
 
         // إغلاق نافذة محتوى الملف
@@ -1137,12 +1178,17 @@
                                         <div>
                                             <strong>${file.title}</strong>
                                             ${isNew ? `<span class="badge">جديد</span>` : ''}
-                                            ${file.note ? `<div style="font-size: 12px; color: #666; margin-top: 4px;">${file.note}</div>` : ''}
-                                            ${file.file_name ? `<div style="font-size: 12px; color: #007bff; margin-top: 2px;"><i class="fas fa-file"></i> ${file.file_name}</div>` : ''}
+                                            <div class="file-info">
+                                                ${file.category} - ${file.date}
+                                                ${file.file_size ? ` - <span class="file-size">${(file.file_size / 1024 / 1024).toFixed(2)} MB</span>` : ''}
+                                                ${file.file_type ? ` - <span class="file-type">${file.file_type}</span>` : ''}
+                                            </div>
+                                            ${file.note ? `<div class="file-info">${file.note}</div>` : ''}
+                                            ${file.file_url ? `<div class="file-uploaded"><i class="fas fa-check-circle"></i> ملف مرفوع</div>` : ''}
                                         </div>
                                         <div class="file-actions">
                                             <div class="file-date">${file.date}</div>
-                                            ${file.file_name ? `
+                                            ${file.file_url ? `
                                                 <button class="btn btn-outline btn-sm" onclick="downloadFile('${file.id}')">
                                                     <i class="fas fa-download"></i>
                                                     تحميل
@@ -1195,12 +1241,17 @@
                                             <div>
                                                 <strong>${file.title}</strong>
                                                 ${isNew ? `<span class="badge">جديد</span>` : ''}
-                                                ${file.note ? `<div style="font-size: 12px; color: #666; margin-top: 4px;">${file.note}</div>` : ''}
-                                                ${file.file_name ? `<div style="font-size: 12px; color: #007bff; margin-top: 2px;"><i class="fas fa-file"></i> ${file.file_name}</div>` : ''}
+                                                <div class="file-info">
+                                                    ${file.category} - ${file.date}
+                                                    ${file.file_size ? ` - <span class="file-size">${(file.file_size / 1024 / 1024).toFixed(2)} MB</span>` : ''}
+                                                    ${file.file_type ? ` - <span class="file-type">${file.file_type}</span>` : ''}
+                                                </div>
+                                                ${file.note ? `<div class="file-info">${file.note}</div>` : ''}
+                                                ${file.file_url ? `<div class="file-uploaded"><i class="fas fa-check-circle"></i> ملف مرفوع</div>` : ''}
                                             </div>
                                             <div class="file-actions">
                                                 <div class="file-date">${file.date}</div>
-                                                ${file.file_name ? `
+                                                ${file.file_url ? `
                                                     <button class="btn btn-outline btn-sm" onclick="downloadFile('${file.id}')">
                                                         <i class="fas fa-download"></i>
                                                         تحميل
@@ -1223,7 +1274,7 @@
             }
         }
 
-        // مشاهدة محتوى الملف من القائمة
+        // مشاهدة محتوى الملف الفعلي
         async function viewFileContent(fileId) {
             try {
                 const userFiles = await loadUserFiles();
@@ -1231,30 +1282,39 @@
                 
                 if (!file) return;
                 
-                // عرض محتوى الملف
-                document.getElementById("fileContentTitle").textContent = file.title;
-                
-                // محاكاة محتوى الملف
-                const fileContent = `
-                    <h4>${file.title}</h4>
-                    <p><strong>التصنيف:</strong> ${file.category}</p>
-                    <p><strong>التاريخ:</strong> ${file.date}</p>
-                    ${file.note ? `<p><strong>ملاحظات:</strong> ${file.note}</p>` : ''}
-                    <hr>
-                    <div style="margin-top: 20px;">
-                        <p>هذا هو محتوى الملف "${file.title}". في التطبيق الحقيقي، سيتم عرض المحتوى الفعلي للملف هنا.</p>
-                        <p>يمكن أن يتضمن المحتوى نصوصًا، صورًا، جداول، أو أي نوع آخر من المحتوى حسب نوع الملف.</p>
-                    </div>
-                `;
-                
-                document.getElementById("fileContentDisplay").innerHTML = fileContent;
-                document.getElementById("fileContentModal").classList.add("active");
-                
-                // تسجيل الاطلاع إذا كان الملف جديدًا
-                if (!viewedFiles.includes(fileId)) {
+                // إذا كان هناك ملف فعلي مرفوع
+                if (file.file_url) {
+                    // فتح الملف في نافذة جديدة
+                    window.open(file.file_url, '_blank');
+                    
+                    // تسجيل الاطلاع
                     await markFileAsViewed(fileId);
                     await loadCategoriesNav();
                     await loadFiles();
+                } else {
+                    // إذا لم يكن هناك ملف فعلي، عرض محتوى افتراضي
+                    document.getElementById("fileContentTitle").textContent = file.title;
+                    
+                    const fileContent = `
+                        <h4>${file.title}</h4>
+                        <p><strong>التصنيف:</strong> ${file.category}</p>
+                        <p><strong>التاريخ:</strong> ${file.date}</p>
+                        ${file.note ? `<p><strong>ملاحظات:</strong> ${file.note}</p>` : ''}
+                        <hr>
+                        <div style="margin-top: 20px;">
+                            <p>هذا الملف لا يحتوي على محتوى مرفوع. يرجى التواصل مع الإدارة إذا كنت بحاجة إلى محتوى هذا الملف.</p>
+                        </div>
+                    `;
+                    
+                    document.getElementById("fileContentDisplay").innerHTML = fileContent;
+                    document.getElementById("fileContentModal").classList.add("active");
+                    
+                    // تسجيل الاطلاع إذا كان الملف جديدًا
+                    if (!viewedFiles.includes(fileId)) {
+                        await markFileAsViewed(fileId);
+                        await loadCategoriesNav();
+                        await loadFiles();
+                    }
                 }
                 
             } catch (error) {
@@ -1262,7 +1322,7 @@
             }
         }
 
-        // تحميل الملف
+        // تحميل الملف الفعلي
         async function downloadFile(fileId) {
             try {
                 const currentStaff = JSON.parse(localStorage.getItem("currentStaff"));
@@ -1271,6 +1331,20 @@
                 const file = userFiles.find(f => f.id === fileId);
                 
                 if (!file) return;
+                
+                // إذا كان هناك ملف فعلي مرفوع
+                if (file.file_url) {
+                    // إنشاء رابط تحميل
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = file.file_url;
+                    downloadLink.download = file.file_name || file.title;
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                } else {
+                    alert("لا يوجد ملف مرفوع للتحميل");
+                    return;
+                }
                 
                 // إضافة الملف إلى قائمة الملفات التي تم الاطلاع عليها
                 if (!viewedFiles.includes(fileId)) {
@@ -1291,14 +1365,9 @@
                 // تحديث الشريط الجانبي
                 await loadCategoriesNav();
                 
-                // محاكاة عملية التحميل
-                alert(`يتم الآن تحميل الملف: ${file.title}`);
-                
-                // في تطبيق حقيقي، هنا سيتم تحميل الملف الفعلي
-                console.log(`تحميل الملف: ${file.title}`);
-                
             } catch (error) {
                 console.error("خطأ في تحميل الملف:", error);
+                alert("حدث خطأ في تحميل الملف");
             }
         }
 
