@@ -2931,16 +2931,27 @@
         // تحميل جدول المعلم
         async function loadTeacherSchedule() {
             const teacherId = document.getElementById("scheduleTeacher").value;
-            if (!teacherId) return;
+            if (!teacherId) {
+                document.getElementById("scheduleGrid").innerHTML = '<p>يرجى اختيار معلم أولاً</p>';
+                return;
+            }
 
             try {
                 const schedules = await Database.getSchedules();
-                const teacherSchedule = schedules.find(s => s.teacher_id === teacherId) || 
-                    { teacher_id: teacherId, schedule: createEmptySchedule() };
+                console.log('جميع الجداول:', schedules);
+                
+                const teacherSchedule = schedules.find(s => s.teacher_id === teacherId);
+                console.log('جدول المعلم المحدد:', teacherSchedule);
 
-                renderSchedule(teacherSchedule.schedule);
+                if (teacherSchedule && teacherSchedule.schedule_data) {
+                    renderSchedule(teacherSchedule.schedule_data);
+                } else {
+                    // إذا لم يكن هناك جدول، اعرض جدول فارغ
+                    renderSchedule(createEmptySchedule());
+                }
             } catch (error) {
                 console.error("خطأ في جلب جدول المعلم:", error);
+                document.getElementById("scheduleGrid").innerHTML = '<p>حدث خطأ في تحميل الجدول</p>';
             }
         }
 
@@ -2963,7 +2974,7 @@
                 html += `<div class="schedule-day">${day}</div>`;
                 
                 for (let i = 0; i < periods; i++) {
-                    const slot = schedule[day][i];
+                    const slot = schedule[day] && schedule[day][i] ? schedule[day][i] : { subject: '', class: '' };
                     html += `
                         <div class="schedule-slot" onclick="openScheduleModal('${day}', ${i})">
                             ${slot.subject ? `
@@ -2988,8 +2999,8 @@
                 const teacherId = document.getElementById("scheduleTeacher").value;
                 const teacherSchedule = schedules.find(s => s.teacher_id === teacherId);
                 
-                if (teacherSchedule) {
-                    const slot = teacherSchedule.schedule[day][period];
+                if (teacherSchedule && teacherSchedule.schedule_data) {
+                    const slot = teacherSchedule.schedule_data[day][period];
                     document.getElementById("modalSubject").value = slot.subject || '';
                     document.getElementById("modalClass").value = slot.class || '';
                 } else {
@@ -3019,21 +3030,30 @@
                 return;
             }
 
+            if (!subject || !classValue) {
+                alert("يرجى اختيار المادة والصف الدراسي");
+                return;
+            }
+
             try {
                 const schedules = await Database.getSchedules();
                 let teacherSchedule = schedules.find(s => s.teacher_id === teacherId);
                 
+                // إنشاء جدول جديد إذا لم يكن موجوداً
                 if (!teacherSchedule) {
                     teacherSchedule = {
                         teacher_id: teacherId,
-                        schedule: createEmptySchedule()
+                        schedule_data: createEmptySchedule()
                     };
                 }
                 
-                teacherSchedule.schedule[currentDay][currentPeriod] = {
+                // تحديث الحصة المحددة
+                teacherSchedule.schedule_data[currentDay][currentPeriod] = {
                     subject: subject,
                     class: classValue
                 };
+                
+                console.log('بيانات الجدول قبل الحفظ:', teacherSchedule);
                 
                 const { error } = await Database.upsertSchedule(teacherSchedule);
                 
@@ -3046,7 +3066,7 @@
                 alert("تم حفظ الحصة بنجاح");
             } catch (error) {
                 console.error("خطأ في حفظ الحصة:", error);
-                alert("حدث خطأ في حفظ الحصة");
+                alert("حدث خطأ في حفظ الحصة: " + error.message);
             }
         }
 
@@ -3066,11 +3086,11 @@
                 if (!teacherSchedule) {
                     teacherSchedule = {
                         teacher_id: teacherId,
-                        schedule: createEmptySchedule()
+                        schedule_data: createEmptySchedule()
                     };
                 }
                 
-                teacherSchedule.schedule[currentDay][currentPeriod] = {
+                teacherSchedule.schedule_data[currentDay][currentPeriod] = {
                     subject: '',
                     class: ''
                 };
@@ -3100,20 +3120,17 @@
             
             if (confirm("هل أنت متأكد من تفريغ جدول الحصص بالكامل؟")) {
                 try {
-                    const schedules = await Database.getSchedules();
-                    const teacherScheduleIndex = schedules.findIndex(s => s.teacher_id === teacherId);
+                    const { error } = await Database.upsertSchedule({
+                        teacher_id: teacherId,
+                        schedule_data: createEmptySchedule()
+                    });
                     
-                    if (teacherScheduleIndex !== -1) {
-                        schedules[teacherScheduleIndex].schedule = createEmptySchedule();
-                        const { error } = await Database.upsertSchedule(schedules[teacherScheduleIndex]);
-                        
-                        if (error) {
-                            throw error;
-                        }
-                        
-                        await loadTeacherSchedule();
-                        alert("تم تفريغ جدول الحصص بنجاح");
+                    if (error) {
+                        throw error;
                     }
+                    
+                    await loadTeacherSchedule();
+                    alert("تم تفريغ جدول الحصص بنجاح");
                 } catch (error) {
                     console.error("خطأ في تفريغ جدول الحصص:", error);
                     alert("حدث خطأ في تفريغ الجدول");
@@ -3636,8 +3653,8 @@
                         for (let period = 0; period < periods; period++) {
                             let slotContent = '';
                             
-                            if (teacherSchedule && teacherSchedule.schedule[day] && teacherSchedule.schedule[day][period]) {
-                                const slot = teacherSchedule.schedule[day][period];
+                            if (teacherSchedule && teacherSchedule.schedule_data[day] && teacherSchedule.schedule_data[day][period]) {
+                                const slot = teacherSchedule.schedule_data[day][period];
                                 if (slot.subject && slot.class) {
                                     slotContent = `
                                         <div class="schedule-subject">${slot.subject}</div>
@@ -3651,7 +3668,7 @@
                     }
                     
                     html += `</tr>`;
-                });
+                }
                 
                 html += `</tbody></table>`;
                 container.innerHTML = html;
@@ -3706,8 +3723,8 @@
                         for (let period = 0; period < periods; period++) {
                             let slotContent = '-';
                             
-                            if (teacherSchedule && teacherSchedule.schedule[day] && teacherSchedule.schedule[day][period]) {
-                                const slot = teacherSchedule.schedule[day][period];
+                            if (teacherSchedule && teacherSchedule.schedule_data[day] && teacherSchedule.schedule_data[day][period]) {
+                                const slot = teacherSchedule.schedule_data[day][period];
                                 if (slot.subject && slot.class) {
                                     slotContent = `${slot.subject}<br><small>${slot.class}</small>`;
                                 }
@@ -3824,8 +3841,8 @@
                         // البحث عن الحصة في جداول المعلمين
                         schedules.forEach(schedule => {
                             const teacher = staff.find(s => s.id === schedule.teacher_id);
-                            if (teacher && schedule.schedule[day] && schedule.schedule[day][period]) {
-                                const slot = schedule.schedule[day][period];
+                            if (teacher && schedule.schedule_data[day] && schedule.schedule_data[day][period]) {
+                                const slot = schedule.schedule_data[day][period];
                                 if (slot.class === classValue && slot.subject) {
                                     slotContent = `${slot.subject}<br><small>${teacher.name}</small>`;
                                 }
@@ -3976,6 +3993,22 @@
             }
         }
 
+        // التحقق من جداول الحصص
+        async function debugSchedules() {
+            try {
+                const schedules = await Database.getSchedules();
+                console.log('🔍 جميع جداول الحصص:', schedules);
+                
+                const teacherId = document.getElementById("scheduleTeacher").value;
+                if (teacherId) {
+                    const teacherSchedule = schedules.find(s => s.teacher_id === teacherId);
+                    console.log('📋 جدول المعلم المحدد:', teacherSchedule);
+                }
+            } catch (error) {
+                console.error('خطأ في التحقق:', error);
+            }
+        }
+
         // تهيئة التطبيق
         document.addEventListener("DOMContentLoaded", async function() {
             if (localStorage.getItem("role") !== "admin") {
@@ -3994,6 +4027,12 @@
             
             // تهيئة التبويبات المتعددة
             initializeMultiSelectTabs();
+            
+            // استدعاء التحقق عند تغيير المعلم
+            const teacherSelect = document.getElementById("scheduleTeacher");
+            if (teacherSelect) {
+                teacherSelect.addEventListener('change', debugSchedules);
+            }
             
             // إظهار قسم لوحة التحكم افتراضيًا
             showSection('dashboard');
